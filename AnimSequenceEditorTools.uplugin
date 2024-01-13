@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "AnimSequenceEditorTools",
+	"Description": "Tools for automaticing editor functions for AnimSequences",
+	"Category": "Editor",
+	"CreatedBy": "Powercore2000",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "AnimSequenceEditorTools",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		}
+	]
+}
