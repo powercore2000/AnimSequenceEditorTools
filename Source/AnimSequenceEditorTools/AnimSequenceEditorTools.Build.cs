@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 using System;
+using System.IO;
 using UnrealBuildTool;
 
 public class AnimSequenceEditorTools : ModuleRules
@@ -10,11 +11,13 @@ public class AnimSequenceEditorTools : ModuleRules
 
         PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
         DefaultBuildSettings = BuildSettingsVersion.V2;
+        string engine_path = Path.GetFullPath(Target.RelativeEnginePath);
+        string src_path = engine_path + "Source/Editor/";
 
         PublicIncludePaths.AddRange(
 			new string[] {
 				// ... add public include paths required here ...
-				"/Engine/Source/Editor/SequenceRecorder/",
+				src_path + "Persona/Private"
             }
 			);
 				
@@ -36,7 +39,9 @@ public class AnimSequenceEditorTools : ModuleRules
                 "SlateCore",
                 "UnrealEd",
                 "SequenceRecorder",
-				"AnimationEditor"
+				"AnimationEditor",
+				"Persona",
+                "EditorInteractiveToolsFramework",
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
@@ -45,13 +50,6 @@ public class AnimSequenceEditorTools : ModuleRules
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
-				/*
-				"CoreUObject",
-				"Engine",
-				"Slate",
-				"SlateCore",
-                "UnrealEd",
-				"SequenceRecorder"*/
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

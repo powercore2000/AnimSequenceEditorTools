@@ -6,7 +6,7 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "Animation/AnimSequence.h"
 #include "AnimSequenceTools_AnimTracker.h"
-
+//#include "GenericPlatformMisc.h"
 
 
 
@@ -23,6 +23,9 @@
 #include "IAnimationEditor.h"
 #include "IPersonaToolkit.h"
 #include "ISequenceRecorder.h"
+//#include "SAnimationDlgs.h"
+
+//#include "DataAssetFactory.h"
 #endif
 
 #include "AnimSequenceTools_BPLibrary.generated.h"
@@ -38,31 +41,39 @@ class ANIMSEQUENCEEDITORTOOLS_API UAnimSequenceTools_BPLibrary : public UBluepri
 public:
 
 	UFUNCTION(BlueprintCallable, Category = "AnimSequenceTools")
-		static bool OpenEditorWindowsForAssets(const TArray<UObject*> NewAssets);
+		static bool OpenEditorWindowsForAssets(const TArray<UObject*> SelectedAssets);
 
 	UFUNCTION(BlueprintCallable, Category = "AnimSequenceTools")
-		static void CloneAnimSequences(const TArray<UObject*> NewAssets);
+		static void CloneAnimSequences(const TArray<UObject*> SelectedAssets);
+
+	UFUNCTION(BlueprintCallable, Category = "AnimSequenceTools")
+		static void CloneAnimSequencesTargeted(const TArray<UObject*> SelectedAssets);
+	
+	UFUNCTION(BlueprintCallable, Category = "AnimSequenceTools")
+		static void CloneAnimSequencesToDir(const TArray<UObject*> SelectedAssets, const FString outputPath = "Game/DuplicatedAnimations/AssetName/");
+
+
+		
 
 
 	static IAssetEditorInstance* OpenServiceEditor(const TArray<UObject*> NewAssets);
 
-	static bool AnimFactoryCloningEditorSwap(const TArray<UObject*> NewAssets, TWeakPtr<AnimSequenceTools_AnimTracker> AnimTrackerPtr);
+	static void StartBatchAnimFactoryToDir(const TArray<UObject*> SelectedAssets, const FString* outputPath);
 
-	static void AnimFactoryEditorSwap(const TArray<UObject*> NewAssets);
+	static void StartBatchAnimFactory(const TArray<UObject*> SelectedAssets);
 
+	static bool BatchAnimSeqCloner(const TArray<UObject*> NewAssets, TWeakPtr<AnimSequenceTools_AnimTracker> AnimTrackerPtr);
 
-
-
-
-
-	static void AnimFactoryCloning(const TArray<UObject*> NewAssets, TWeakPtr<AnimSequenceTools_AnimTracker> AnimTrackerPtr);
-
-	static void AnimFactory(const TArray<UObject*> NewAssets);
+	//UFUNCTION(BlueprintCallable, Category = "AnimSequenceTools")
+		//static FString OpenFilePathSelectionModal();
 
 
-	static bool AnimFactoryCloningNoEditor(const TArray<UObject*> NewAssets, TWeakPtr<AnimSequenceTools_AnimTracker> AnimTrackerPtr);
+	static void StartTargetedAnimFactory(const TArray<UObject*> SelectedAssets);
 
-	static void AnimFactoryNoEditor(const TArray<UObject*> NewAssets);
+	static bool TargetedAnimSeqCloner(const TArray<UObject*> NewAssets, TWeakPtr<AnimSequenceTools_AnimTracker> AnimTrackerPtr);
+
+
+
 
 private:
 	static bool HandleAssetCreated(const TArray<UObject*> NewAssets);

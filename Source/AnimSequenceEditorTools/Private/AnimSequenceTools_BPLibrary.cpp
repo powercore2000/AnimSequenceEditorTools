@@ -3,307 +3,249 @@
 
 #include "AnimSequenceTools_BPLibrary.h"
 
-//Entry point blueprints function
-void UAnimSequenceTools_BPLibrary::CloneAnimSequences(const TArray<UObject*> NewAssets) {
+//Entry point blueprints functions
+void UAnimSequenceTools_BPLibrary::CloneAnimSequences(const TArray<UObject*> SelectedAssets) {
 
-	AnimFactoryEditorSwap(NewAssets);
+	StartBatchAnimFactory(SelectedAssets);
+}
+
+void UAnimSequenceTools_BPLibrary::CloneAnimSequencesTargeted(const TArray<UObject*> SelectedAssets) {
+
+	StartTargetedAnimFactory(SelectedAssets);
+}
+
+void UAnimSequenceTools_BPLibrary::CloneAnimSequencesToDir(const TArray<UObject*> SelectedAssets, const FString outputPath) {
+
+	StartBatchAnimFactoryToDir(SelectedAssets, &outputPath);
 }
 
 
-/*
-//Activates the AnimSequence Factory and iterates through each selected asset passed in
-void UAnimSequenceTools_BPLibrary::AnimFactory(const TArray<UObject*> NewAssets) {
 
-	//Grab the editor window insntace
-	const bool bDoNotShowNameDialog = false;
-	const bool bAllowReplaceExisting = true;
-	bool bBringToFrontIfOpen = true;
-
-	UE_LOG(LogTemp, Display, TEXT("Using The editor"));
-	TArray<UAnimationAsset*> AnimAssets;
-	TArray<TSoftObjectPtr<UObject>> Objects;
-
-	for (auto ObjIt = NewAssets.CreateConstIterator(); ObjIt; ++ObjIt)
-	{
-		if (UAnimationAsset* AnimAsset = Cast<UAnimationAsset>(*ObjIt))
-		{
-			AnimAssets.Add(AnimAsset);
-		}
-
-	}
-
-	for (UAnimationAsset* AnimAsset : AnimAssets)
-	{
-		Objects.Add(AnimAsset->GetSkeleton());
-		IAssetEditorInstance* AnimationEditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->FindEditorForAsset(AnimAsset, bBringToFrontIfOpen);
-
-		TSharedPtr<AnimSequenceTools_AnimTracker> AnimSeqPtr = MakeShareable(new AnimSequenceTools_AnimTracker());
-		AnimSeqPtr->SetSourceAnim(AnimAsset);
-		TWeakPtr<AnimSequenceTools_AnimTracker> WeakPtr = AnimSeqPtr.ToWeakPtr();
-		//seqTracker.SetAnimationRef(AnimAsset);
-
-		//Assign Source Anim Asset		
-		if (AnimationEditorInstance != nullptr) {
-
-			AnimationEditorInstance->FocusWindow();
-			AnimationEditorUtils::ExecuteNewAnimAsset<UAnimSequenceFactory, UAnimSequence>(Objects, FString("_Sequence"),
-				FAnimAssetCreated::CreateStatic(&UAnimSequenceTools_BPLibrary::AnimFactoryCloning, WeakPtr),
-				bDoNotShowNameDialog, bAllowReplaceExisting);
-		}
-
-		else {
-			UE_LOG(LogTemp, Error, TEXT("Pointer to original editor invalid!"));
-		}
-
-		Objects.Empty();
-	}
-
-}
-
-//Handles the animation cloning process
-void UAnimSequenceTools_BPLibrary::AnimFactoryCloning(const TArray<UObject*> NewAssets, TWeakPtr<AnimSequenceTools_AnimTracker> AnimTrackerPtr) {
-
-	//Grab the editor window insntace
-	bool bResult = true;
-	bool bBringToFrontIfOpen = true;
-
-#if WITH_EDITOR
-	//UE_LOG(LogTemp, Display, TEXT("%s"), localInt);
-	UE_LOG(LogTemp, Display, TEXT("Running CloneAnimSequenceInstance %"), NewAssets.Num());
-
-	UAnimationAsset* TargetAnimAsset = Cast<UAnimationAsset>(NewAssets[0]);
-	UAnimationAsset* SourceAnimAsset = AnimTrackerPtr.Pin()->GetSourceAnim();
-
-
-	IAssetEditorInstance* EditorInstance = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->FindEditorForAsset(SourceAnimAsset, bBringToFrontIfOpen);
-	if (EditorInstance != nullptr)
-	{
-		//Focuses to window
-		UE_LOG(LogTemp, Display, TEXT("Found editor window for asset %s"), *TargetAnimAsset->GetName());
-
-		if (EditorInstance->GetEditorName() == FName("AnimationEditor"))
-		{
-
-			//Change the current anim to this one
-			IAnimationEditor* AnimEditor = static_cast<IAnimationEditor*>(EditorInstance);
-			TSharedRef<IPersonaToolkit> PersonaToolkit = AnimEditor->GetPersonaToolkit();
-			USkeletalMeshComponent* MeshComponent = PersonaToolkit->GetPreviewMeshComponent();
-			UAnimSequence* Sequence = Cast<UAnimSequence>(TargetAnimAsset);
-			UE_LOG(LogTemp, Display, TEXT("Ready to process asset with component %s"), *MeshComponent->GetName());
-			//Sequence is new Fbx passed in via object
-			//MeshComponent must come from old Ui
-
-			ISequenceRecorder& RecorderModule = FModuleManager::Get().LoadModuleChecked<ISequenceRecorder>("SequenceRecorder");
-			bResult &= RecorderModule.RecordSingleNodeInstanceToAnimation(MeshComponent, Sequence, true);
-
-		}
-
-
-	}
-
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("No Animation Window Found Anim Asset!"));
-	}
-
-	if (bResult) {
-
-		FAssetRegistryModule::AssetCreated(TargetAnimAsset);
-	}
-
-#endif
-
-}
-
-//Activates the AnimSequence Factory and iterates through each selected asset passed in
-void UAnimSequenceTools_BPLibrary::AnimFactoryNoEditor(const TArray<UObject*> NewAssets) {
-
-	//Grab the editor window insntace
-	const bool bDoNotShowNameDialog = false;
-	const bool bAllowReplaceExisting = true;
-	bool bBringToFrontIfOpen = true;
-
-	UE_LOG(LogTemp, Display, TEXT("Using no editor"));
-	TArray<UAnimationAsset*> AnimAssets;
-	TArray<TSoftObjectPtr<UObject>> Objects;
-
-	for (auto ObjIt = NewAssets.CreateConstIterator(); ObjIt; ++ObjIt)
-	{
-		if (UAnimationAsset* AnimAsset = Cast<UAnimationAsset>(*ObjIt))
-		{
-			AnimAssets.Add(AnimAsset);
-		}
-
-	}
-
-	for (UAnimationAsset* AnimAsset : AnimAssets)
-	{
-		Objects.Add(AnimAsset->GetSkeleton());
-
-
-		UDebugSkelMeshComponent* SourceAnimSkeleton = NewObject<UDebugSkelMeshComponent>(AnimAsset->GetSkeleton());
-
-
-		TSharedPtr<AnimSequenceTools_AnimTracker> AnimSeqPtr = MakeShareable(new AnimSequenceTools_AnimTracker());
-		AnimSeqPtr->SetSourceAnim(AnimAsset);
-		TWeakPtr<AnimSequenceTools_AnimTracker> WeakPtr = AnimSeqPtr.ToWeakPtr();
-		//seqTracker.SetAnimationRef(AnimAsset);
-
-		//Assign Source Anim Asset
-		if (SourceAnimSkeleton != nullptr) {
-
-			AnimationEditorUtils::ExecuteNewAnimAsset<UAnimSequenceFactory, UAnimSequence>(Objects, FString("_Sequence"),
-				FAnimAssetCreated::CreateStatic(&UAnimSequenceTools_BPLibrary::AnimFactoryCloningNoEditor, WeakPtr),
-				bDoNotShowNameDialog, bAllowReplaceExisting);
-		}
-
-		else {
-			UE_LOG(LogTemp, Error, TEXT("Pointer to original asset skeleton is not found!"));
-		}
-
-		Objects.Empty();
-	}
-
-}
-
-//Handles the animation cloning process
-bool UAnimSequenceTools_BPLibrary::AnimFactoryCloningNoEditor(const TArray<UObject*> NewAssets, TWeakPtr<AnimSequenceTools_AnimTracker> AnimTrackerPtr) {
-
-	//Grab the editor window insntace
-	bool bResult = true;
-	bool bBringToFrontIfOpen = true;
-
-#if WITH_EDITOR
-	//UE_LOG(LogTemp, Display, TEXT("%s"), localInt);
-	UE_LOG(LogTemp, Display, TEXT("Running CloneAnimSequenceInstance %"), NewAssets.Num());
-
-	UAnimationAsset* TargetAnimAsset = Cast<UAnimationAsset>(NewAssets[0]);
-	UAnimationAsset* SourceAnimAsset = AnimTrackerPtr.Pin()->GetSourceAnim();
-	USkeletalMeshComponent* SourceAnimSkeleton = NewObject<USkeletalMeshComponent>(SourceAnimAsset->GetSkeleton());
-	//AnimScriptInstance = NewObject<UAnimInstance>(this, AnimClass);
-	SourceAnimSkeleton->InitializeAnimScriptInstance();
-	if (SourceAnimSkeleton != nullptr)
-	{
-		//Focuses to window
-		UE_LOG(LogTemp, Display, TEXT("Found Skeleton for asset %s"), *TargetAnimAsset->GetName());
-
-
-			//Change the current anim to this one
-			UAnimSequence* Sequence = Cast<UAnimSequence>(TargetAnimAsset);
-			UE_LOG(LogTemp, Display, TEXT("Ready to process asset with component %s"), *SourceAnimSkeleton->GetName());
-			//Sequence is new Fbx passed in via object
-			//MeshComponent must come from old Ui
-
-			ISequenceRecorder& RecorderModule = FModuleManager::Get().LoadModuleChecked<ISequenceRecorder>("SequenceRecorder");
-			UE_LOG(LogTemp, Display, TEXT("About to record"));
-			bResult &= RecorderModule.RecordSingleNodeInstanceToAnimation(SourceAnimSkeleton, Sequence, true);
-			UE_LOG(LogTemp, Display, TEXT("Processing status: %s"), bResult);
-
-
-
-	}
-
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("No Animation Window Found Anim Asset!"));
-	}
-
-	if (bResult) {
-
-		FAssetRegistryModule::AssetCreated(TargetAnimAsset);
-	}
-
-#endif
-
-	return bResult;
-}
-
-*/
-
-
-IAssetEditorInstance* UAnimSequenceTools_BPLibrary::OpenServiceEditor(const TArray<UObject*> NewAssets) {
+//Handles opening UI editors to process
+IAssetEditorInstance* UAnimSequenceTools_BPLibrary::OpenServiceEditor(const TArray<UObject*> SelectedAssets) {
 
 	TArray<UObject*> FirstAssetArray;
 
-	FirstAssetArray.Add(NewAssets[0]);
+	FirstAssetArray.Add(SelectedAssets[0]);
 	FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
 	TWeakPtr<IAssetTypeActions> AssetTypeActions = AssetToolsModule.Get().GetAssetTypeActionsForClass(FirstAssetArray[0]->GetClass());
 
 	if (AssetTypeActions.IsValid())
 	{
 		AssetTypeActions.Pin()->OpenAssetEditor(FirstAssetArray);
-		return GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->FindEditorForAsset(NewAssets[0], true);
+		return GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->FindEditorForAsset(SelectedAssets[0], true);
 	}
 
 	return nullptr;
 }
 
 
+//Opens Editor Windows for all selected assets
+bool UAnimSequenceTools_BPLibrary::OpenEditorWindowsForAssets(const TArray<UObject*> SelectedAssets)
+{
+	if (SelectedAssets.Num() > 0)
+	{
+		UE_LOG(LogTemp, Display, TEXT("Created new asset!"));
+		// forward to asset manager to open the asset for us
+		FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
+		TWeakPtr<IAssetTypeActions> AssetTypeActions = AssetToolsModule.Get().GetAssetTypeActionsForClass(SelectedAssets[0]->GetClass());
+		if (AssetTypeActions.IsValid())
+		{
+
+			AssetTypeActions.Pin()->OpenAssetEditor(SelectedAssets);
+		}
+	}
+	return true;
+}
 
 
 
 
-//Activates the AnimSequence Factory and iterates through each selected asset passed in
-void UAnimSequenceTools_BPLibrary::AnimFactoryEditorSwap(const TArray<UObject*> NewAssets) {
+
+//Activates the BatchAnimSeqCloner and creates the new UObject assets
+void UAnimSequenceTools_BPLibrary::StartBatchAnimFactoryToDir(const TArray<UObject*> SelectedAssets, const FString* outputPath) {
 
 	//Grab the editor window insntace
 	const bool bDoNotShowNameDialog = false;
 	const bool bAllowReplaceExisting = true;
 	bool bBringToFrontIfOpen = true;
 
-	UE_LOG(LogTemp, Display, TEXT("Using The editor"));
+	UE_LOG(LogTemp, Display, TEXT("Batch Cloning Animation Sequences : %"), SelectedAssets.Num());
 	TArray<UAnimationAsset*> AnimAssets;
-	TArray<TSoftObjectPtr<UObject>> Objects;	
+	TArray<UObject*> DuplicatedAssets;
 
 	TSharedPtr<AnimSequenceTools_AnimTracker> AnimTrackerPtr = MakeShareable(new AnimSequenceTools_AnimTracker());
 	TWeakPtr<AnimSequenceTools_AnimTracker> WeakPtr = AnimTrackerPtr.ToWeakPtr();
 
-	for (auto ObjIt = NewAssets.CreateConstIterator(); ObjIt; ++ObjIt)
+
+	for (auto ObjIt = SelectedAssets.CreateConstIterator(); ObjIt; ++ObjIt)
 	{
+		//If the asset is a valid UAnimationAsset
 		if (UAnimationAsset* AnimAsset = Cast<UAnimationAsset>(*ObjIt))
 		{
-			Objects.Add(AnimAsset->GetSkeleton());			
+
 			AnimAssets.Add(AnimAsset);
 			AnimTrackerPtr->AddSourceAnimAsset(AnimAsset);
+
+			FString fileName = AnimAsset->GetName();
+			FString Name, PackageName;
+
+			// Find the position of the last occurrence of "Content" in the path
+			int32 Index = outputPath->Find(TEXT("Content"), ESearchCase::IgnoreCase, ESearchDir::FromEnd);
+
+
+
+			// If "Content" is found, trim the path
+			if (Index != INDEX_NONE)
+			{
+				PackageName = outputPath->RightChop(Index + 7); // 7 is the length of "Content"
+				PackageName = "/Game" + PackageName + "/AssetName/";
+			}
+			UE_LOG(LogTemp, Display, TEXT("Trimmed packadge directory %s"), *PackageName);
+			
+			UE_LOG(LogTemp, Display, TEXT("Asset Name %s"), *fileName);
+			const FString PackagePath = FPackageName::GetLongPackagePath(PackageName);
+
+
+			UPackage* Package = CreatePackage(*PackagePath);
+			UAnimSequenceFactory* MyFactory = NewObject<UAnimSequenceFactory>(); // Can omit, and a default factory will be used
+			MyFactory->TargetSkeleton = AnimAsset->GetSkeleton();
+
+
+			//Ensure the packadge and file name are NOT identical to the source file we are copying from
+			UObject* NewObject = MyFactory->FactoryCreateNew(UAnimSequence::StaticClass(), Package, *fileName, RF_Standalone | RF_Public, NULL, GWarn);
+			DuplicatedAssets.Add(NewObject);
+			FAssetRegistryModule::AssetCreated(NewObject);
+
+
 		}
 
 	}
 
-
-	IAssetEditorInstance* AnimationEditorInstance = OpenServiceEditor(NewAssets);	
+	IAssetEditorInstance* AnimationEditorInstance = OpenServiceEditor(SelectedAssets);
 	AnimTrackerPtr->SetEditor(AnimationEditorInstance);
-	UAnimSequenceFactory factoryInst = UAnimSequenceFactory();
-	factoryInst.ConfigureProperties();
+
 	//Assign Source Anim Asset		
 	if (AnimationEditorInstance != nullptr) {
-		/*
-		FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
-		
-		FString Name, PackageName;
-		AssetToolsModule.Get().CreateUniqueAssetName(TEXT("/Game/AssetFolder/AssetName"), TEXT(""), PackageName, Name);
-		const FString PackagePath = FPackageName::GetLongPackagePath(PackageName);
-		UObject* NewObject = AssetToolsModule.Get().CreateAsset(Name, PackagePath, UBlueprint::StaticClass());
-		UPackage::Save(package, NewObject, RF_Public | RF_Standalone, *FPackageName::LongPackageNameToFilename(PackageName, FPackageName::GetAssetPackageExtension()));
 
-		// Inform asset registry
-		AssetRegistry.AssetCreated(NewObject);
+		FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+		FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+		IAssetRegistry& AssetRegistry = AssetRegistryModule.Get();
 
-		// Tell content browser to show the newly created asset
-		TArray<UObject*> Objects;
-		Objects.Add(NewObject);
-		ContentBrowserModule.Get().SyncBrowserToAssets(Objects);
+		BatchAnimSeqCloner(DuplicatedAssets, WeakPtr);
+		AnimationEditorInstance->CloseWindow();
+	}
 
-		// Inform asset registry
-		AssetRegistry.AssetCreated(NewObject);
-		*/
+	else {
+		UE_LOG(LogTemp, Error, TEXT("Pointer to original editor invalid!"));
+	}
+
+
+
+}
+
+
+//Activates the BatchAnimSeqCloner and creates the new UObject assets
+void UAnimSequenceTools_BPLibrary::StartBatchAnimFactory(const TArray<UObject*> SelectedAssets) {
+
+	//Grab the editor window insntace
+	const bool bDoNotShowNameDialog = false;
+	const bool bAllowReplaceExisting = true;
+	bool bBringToFrontIfOpen = true;
+
+	UE_LOG(LogTemp, Display, TEXT("Batch Cloning Animation Sequences : %"),  SelectedAssets.Num());
+	TArray<UAnimationAsset*> AnimAssets;
+	TArray<UObject*> DuplicatedAssets;
+
+	TSharedPtr<AnimSequenceTools_AnimTracker> AnimTrackerPtr = MakeShareable(new AnimSequenceTools_AnimTracker());
+	TWeakPtr<AnimSequenceTools_AnimTracker> WeakPtr = AnimTrackerPtr.ToWeakPtr();
+	
+
+
+
+
+	FString Name, PackageName;
+	//Open Dialoge modal
+	/*
+	
+
+	FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
+	FString AssetPath = SelectedAssets[0]->GetOutermost()->GetName();
+
+	// Determine an appropriate name
+	AssetToolsModule.Get().CreateUniqueAssetName(AssetPath, TEXT(""), PackageName, Name);
+
+	// set the unique asset as a default name
+	TSharedRef<SCreateAnimationAssetDlg> NewAnimDlg =
+		SNew(SCreateAnimationAssetDlg)
+		.DefaultAssetPath(FText::FromString(PackageName));
+
+	// show a dialog to determine a new asset name
+	if (NewAnimDlg->ShowModal() == EAppReturnType::Cancel)
+	{
+		PackageName = TEXT("/Game/DuplicatedAnimations/AssetName/");
+	}
+	else {
+
+		PackageName = NewAnimDlg->GetFullAssetPath();
+	}
+	
+	UPackage* Package = CreatePackage(*PackageName);
+	*/
+	//End Dialogue Modal Open
+
+
+
+
+
+
+	
+
+	for (auto ObjIt = SelectedAssets.CreateConstIterator(); ObjIt; ++ObjIt)
+	{
+		//If the asset is a valid UAnimationAsset
+		if (UAnimationAsset* AnimAsset = Cast<UAnimationAsset>(*ObjIt))
+		{
+
+			AnimAssets.Add(AnimAsset);
+			AnimTrackerPtr->AddSourceAnimAsset(AnimAsset);
+			Name = AnimAsset->GetName();	
+			//Hardcoded Packadge setting
+			PackageName = TEXT("/Game/DuplicatedAnimations/");
+			UPackage* Package = CreatePackage(*PackageName);
+
+			UE_LOG(LogTemp, Display, TEXT("Change Package name to %s"), *PackageName);
+			UE_LOG(LogTemp, Display, TEXT("Asset Name %s"), *Name);
+
+			
+
+			
+			UAnimSequenceFactory* MyFactory = NewObject<UAnimSequenceFactory>(); // Can omit, and a default factory will be used
+			MyFactory->TargetSkeleton = AnimAsset->GetSkeleton();
+
+			
+			//Ensure the packadge and file name are NOT identical to the source file we are copying from
+			UObject* NewObject = MyFactory->FactoryCreateNew(UAnimSequence::StaticClass(), Package, *Name, RF_Standalone | RF_Public, NULL, GWarn);
+			DuplicatedAssets.Add(NewObject);
+			FAssetRegistryModule::AssetCreated(NewObject);
+
+
+		}
+
+	}
+
+	IAssetEditorInstance* AnimationEditorInstance = OpenServiceEditor(SelectedAssets);
+	AnimTrackerPtr->SetEditor(AnimationEditorInstance);
+	
+	//Assign Source Anim Asset		
+	if (AnimationEditorInstance != nullptr) {
 		
-		
-		AnimationEditorInstance->FocusWindow();
-		AnimationEditorUtils::ExecuteNewAnimAsset<UAnimSequenceFactory, UAnimSequence>(Objects, FString("_Sequence"),
-			FAnimAssetCreated::CreateStatic(&UAnimSequenceTools_BPLibrary::AnimFactoryCloningEditorSwap, WeakPtr),
-			bDoNotShowNameDialog, bAllowReplaceExisting);
-		
-		AnimTrackerPtr->GetEditor()->CloseWindow();
+		FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+		FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+		IAssetRegistry& AssetRegistry = AssetRegistryModule.Get();
+
+		BatchAnimSeqCloner(DuplicatedAssets, WeakPtr);
+		AnimationEditorInstance->CloseWindow();
 	}
 
 	else {
@@ -315,7 +257,7 @@ void UAnimSequenceTools_BPLibrary::AnimFactoryEditorSwap(const TArray<UObject*> 
 }
 
 
-bool UAnimSequenceTools_BPLibrary::AnimFactoryCloningEditorSwap(const TArray<UObject*> NewAssets, TWeakPtr<AnimSequenceTools_AnimTracker> AnimTrackerPtr) {
+bool UAnimSequenceTools_BPLibrary::BatchAnimSeqCloner(const TArray<UObject*> NewAssets, TWeakPtr<AnimSequenceTools_AnimTracker> AnimTrackerPtr) {
 
 	//Grab the editor window insntace
 	bool bResult = true;
@@ -336,31 +278,149 @@ bool UAnimSequenceTools_BPLibrary::AnimFactoryCloningEditorSwap(const TArray<UOb
 		//Focuses to window
 		UE_LOG(LogTemp, Display, TEXT("Found service editor window!"));
 
-		if (EditorInstance->GetEditorName() == FName("AnimationEditor"))
-		{
-			IAnimationEditor* AnimServiceEditor = static_cast<IAnimationEditor*>(EditorInstance);
+		IAnimationEditor* AnimServiceEditor = static_cast<IAnimationEditor*>(EditorInstance);
 
-			for (int index = 0; index < AnimAssets.Num(); index++) {
+		for (int index = 0; index < AnimAssets.Num(); index++) {
 
-				//Change the current anim to this one
-				UAnimationAsset* TargetAnimAsset = Cast<UAnimationAsset>(NewAssets[index]);
-				UAnimationAsset* SourceAnimAsset = AnimAssets[index];
+			//Change the current anim to this one
+			UAnimationAsset* TargetAnimAsset = Cast<UAnimationAsset>(NewAssets[index]);
+			UAnimationAsset* SourceAnimAsset = AnimAssets[index];
 
 
-				AnimServiceEditor->SetAnimationAsset(SourceAnimAsset);
-				TSharedRef<IPersonaToolkit> PersonaToolkit = AnimServiceEditor->GetPersonaToolkit();
-				USkeletalMeshComponent* SourceMeshComponent = PersonaToolkit->GetPreviewMeshComponent();
-				UAnimSequence* TargetSequence = Cast<UAnimSequence>(TargetAnimAsset);
-				UE_LOG(LogTemp, Display, TEXT("Ready to process asset with component %s"), *SourceMeshComponent->GetName());
-				//Sequence is new Fbx passed in via object
-				//MeshComponent must come from old Ui
+			AnimServiceEditor->SetAnimationAsset(SourceAnimAsset);
+			TSharedRef<IPersonaToolkit> PersonaToolkit = AnimServiceEditor->GetPersonaToolkit();
+			USkeletalMeshComponent* SourceMeshComponent = PersonaToolkit->GetPreviewMeshComponent();
+			UAnimSequence* TargetSequence = Cast<UAnimSequence>(TargetAnimAsset);
+			UE_LOG(LogTemp, Display, TEXT("Ready to process asset with component %s"), *SourceMeshComponent->GetName());
+			//Sequence is new Fbx passed in via object
+			//MeshComponent must come from old Ui
 
-				ISequenceRecorder& RecorderModule = FModuleManager::Get().LoadModuleChecked<ISequenceRecorder>("SequenceRecorder");
-				bResult &= RecorderModule.RecordSingleNodeInstanceToAnimation(SourceMeshComponent, TargetSequence, true);
-			
-				FAssetRegistryModule::AssetCreated(NewAssets[index]);
-			}
+			ISequenceRecorder& RecorderModule = FModuleManager::Get().LoadModuleChecked<ISequenceRecorder>("SequenceRecorder");
+			bResult &= RecorderModule.RecordSingleNodeInstanceToAnimation(SourceMeshComponent, TargetSequence, true);
+
+			FAssetRegistryModule::AssetCreated(NewAssets[index]);
 		}
+
+	}
+
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("No Animation Window Found Anim Asset!"));
+	}
+
+	return bResult;
+#endif
+
+}
+
+
+
+
+
+//Activates the TargetedAnimSeqCloner by using the AnimationEditorUtils::ExecuteNewAnimAsset UI based workflow
+void UAnimSequenceTools_BPLibrary::StartTargetedAnimFactory(const TArray<UObject*> SelectedAssets) {
+
+	//Grab the editor window insntace
+	const bool bDoNotShowNameDialog = false;
+	const bool bAllowReplaceExisting = true;
+	bool bBringToFrontIfOpen = true;
+
+	UE_LOG(LogTemp, Display, TEXT("Duplicating Anim Sequences through targeting"));
+	TArray<UAnimationAsset*> AnimAssets;
+
+	TArray<TSoftObjectPtr<UObject>> Objects;	
+
+	TSharedPtr<AnimSequenceTools_AnimTracker> AnimTrackerPtr = MakeShareable(new AnimSequenceTools_AnimTracker());
+	TWeakPtr<AnimSequenceTools_AnimTracker> WeakPtr = AnimTrackerPtr.ToWeakPtr();
+
+
+	for (auto ObjIt = SelectedAssets.CreateConstIterator(); ObjIt; ++ObjIt)
+	{
+		//If the asset is a valid UAnimationAsset
+		if (UAnimationAsset* AnimAsset = Cast<UAnimationAsset>(*ObjIt))
+		{
+
+			Objects.Add(AnimAsset->GetSkeleton());	
+
+			AnimAssets.Add(AnimAsset);
+			AnimTrackerPtr->AddSourceAnimAsset(AnimAsset);
+
+		}
+
+	}
+
+
+	IAssetEditorInstance* AnimationEditorInstance = OpenServiceEditor(SelectedAssets);
+	AnimTrackerPtr->SetEditor(AnimationEditorInstance);
+
+	//Assign Source Anim Asset		
+	if (AnimationEditorInstance != nullptr) {
+
+		FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
+		FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+		IAssetRegistry& AssetRegistry = AssetRegistryModule.Get();
+
+		
+		AnimationEditorInstance->FocusWindow();
+		AnimationEditorUtils::ExecuteNewAnimAsset<UAnimSequenceFactory, UAnimSequence>(Objects, FString("_Sequence"),
+			FAnimAssetCreated::CreateStatic(&UAnimSequenceTools_BPLibrary::TargetedAnimSeqCloner, WeakPtr),
+			bDoNotShowNameDialog, bAllowReplaceExisting);
+
+		AnimTrackerPtr->GetEditor()->CloseWindow();
+		
+	}
+
+	else {
+		UE_LOG(LogTemp, Error, TEXT("Pointer to original editor invalid!"));
+	}
+
+
+
+}
+
+
+bool UAnimSequenceTools_BPLibrary::TargetedAnimSeqCloner(const TArray<UObject*> NewAssets, TWeakPtr<AnimSequenceTools_AnimTracker> AnimTrackerPtr) {
+
+	//Grab the editor window insntace
+	bool bResult = true;
+	bool bBringToFrontIfOpen = true;
+
+#if WITH_EDITOR
+	//UE_LOG(LogTemp, Display, TEXT("%s"), localInt);
+	UE_LOG(LogTemp, Display, TEXT("Running CloneAnimSequenceInstance %"), NewAssets.Num());
+
+
+	//UAnimationAsset* SourceAnimAsset = AnimTrackerPtr.Pin()->GetSourceAnim();
+	TArray<UAnimationAsset*> AnimAssets = AnimTrackerPtr.Pin()->GetSourceAnimAssets();
+
+	IAssetEditorInstance* EditorInstance = AnimTrackerPtr.Pin()->GetEditor();
+
+	if (EditorInstance != nullptr)
+	{
+		//Focuses to window
+		UE_LOG(LogTemp, Display, TEXT("Found service editor window!"));
+		IAnimationEditor* AnimServiceEditor = static_cast<IAnimationEditor*>(EditorInstance);
+
+		for (int index = 0; index < AnimAssets.Num(); index++) {
+
+			//Change the current anim to this one
+			UAnimationAsset* TargetAnimAsset = Cast<UAnimationAsset>(NewAssets[index]);
+			UAnimationAsset* SourceAnimAsset = AnimAssets[index];
+
+
+			AnimServiceEditor->SetAnimationAsset(SourceAnimAsset);
+			TSharedRef<IPersonaToolkit> PersonaToolkit = AnimServiceEditor->GetPersonaToolkit();
+			USkeletalMeshComponent* SourceMeshComponent = PersonaToolkit->GetPreviewMeshComponent();
+			UAnimSequence* TargetSequence = Cast<UAnimSequence>(TargetAnimAsset);
+			UE_LOG(LogTemp, Display, TEXT("Ready to process asset with component %s"), *SourceMeshComponent->GetName());
+
+
+			ISequenceRecorder& RecorderModule = FModuleManager::Get().LoadModuleChecked<ISequenceRecorder>("SequenceRecorder");
+			bResult &= RecorderModule.RecordSingleNodeInstanceToAnimation(SourceMeshComponent, TargetSequence, true);
+
+			FAssetRegistryModule::AssetCreated(NewAssets[index]);
+		}
+
 
 
 	}
@@ -369,39 +429,16 @@ bool UAnimSequenceTools_BPLibrary::AnimFactoryCloningEditorSwap(const TArray<UOb
 	{
 		UE_LOG(LogTemp, Error, TEXT("No Animation Window Found Anim Asset!"));
 	}
-	/*
-	if (bResult) {
-
-		FAssetRegistryModule::AssetCreated(TargetAnimAsset);
-	}*/
+	
+	return bResult;
 
 #endif
 
-	return bResult;
+
 }
 
 
 
-
-
-
-//Opens Editor Windows for all selected assets
-bool UAnimSequenceTools_BPLibrary::OpenEditorWindowsForAssets(const TArray<UObject*> NewAssets)
-{
-	if (NewAssets.Num() > 0)
-	{
-		UE_LOG(LogTemp, Display, TEXT("Created new asset!"));
-		// forward to asset manager to open the asset for us
-		FAssetToolsModule& AssetToolsModule = FModuleManager::LoadModuleChecked<FAssetToolsModule>(TEXT("AssetTools"));
-		TWeakPtr<IAssetTypeActions> AssetTypeActions = AssetToolsModule.Get().GetAssetTypeActionsForClass(NewAssets[0]->GetClass());
-		if (AssetTypeActions.IsValid())
-		{
-
-			AssetTypeActions.Pin()->OpenAssetEditor(NewAssets);
-		}
-	}
-	return true;
-}
 
 
 //Will register and open the editor window for a single asset
